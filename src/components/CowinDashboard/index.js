@@ -6,12 +6,18 @@ import VaccinationByGender from '../VaccinationByGender'
 
 import './index.css'
 
+const apiStatusConstants = {
+  success: 'SUCCESS',
+  failure: 'FAILURE',
+  loading: 'LOADING',
+}
+
 class CowinDashboard extends Component {
   state = {
     last7daysData: [],
     vaccinationByAge: [],
     vaccinationByGender: [],
-    isLoading: true,
+    isLoading: apiStatusConstants.loading,
   }
 
   componentDidMount() {
@@ -21,27 +27,42 @@ class CowinDashboard extends Component {
   getVaccinationData = async () => {
     const apiUrl = 'https://apis.ccbp.in/covid-vaccination-data'
     const response = await fetch(apiUrl)
-    const data = await response.json()
-    const last7daysData = data.last_7_days_vaccination.map(eachItem => ({
-      dose1: eachItem.dose_1,
-      dose2: eachItem.dose_2,
-      vaccineDate: eachItem.vaccine_date,
-    }))
-    const vaccinationByAge = data.vaccination_by_age.map(eachItem => ({
-      age: eachItem.age,
-      count: eachItem.count,
-    }))
-    const vaccinationByGender = data.vaccination_by_gender.map(eachItem => ({
-      count: eachItem.count,
-      gender: eachItem.gender,
-    }))
-    this.setState({
-      last7daysData,
-      vaccinationByAge,
-      vaccinationByGender,
-      isLoading: false,
-    })
+    if (response.ok === true) {
+      const data = await response.json()
+      const last7daysData = data.last_7_days_vaccination.map(eachItem => ({
+        dose1: eachItem.dose_1,
+        dose2: eachItem.dose_2,
+        vaccineDate: eachItem.vaccine_date,
+      }))
+      const vaccinationByAge = data.vaccination_by_age.map(eachItem => ({
+        age: eachItem.age,
+        count: eachItem.count,
+      }))
+      const vaccinationByGender = data.vaccination_by_gender.map(eachItem => ({
+        count: eachItem.count,
+        gender: eachItem.gender,
+      }))
+      this.setState({
+        last7daysData,
+        vaccinationByAge,
+        vaccinationByGender,
+        isLoading: apiStatusConstants.success,
+      })
+    } else {
+      this.setState({isLoading: apiStatusConstants.failure})
+    }
   }
+
+  renderFailure = () => (
+    <div className="failure-view">
+      <img
+        src="https://assets.ccbp.in/frontend/react-js/api-failure-view.png"
+        alt="failure view"
+        className="failure-image"
+      />
+      <h1 className="fail-message">Something went wrong</h1>
+    </div>
+  )
 
   renderCharts = () => {
     const {last7daysData, vaccinationByAge, vaccinationByGender} = this.state
@@ -62,6 +83,17 @@ class CowinDashboard extends Component {
 
   render() {
     const {isLoading} = this.state
+    let renderView
+    switch (isLoading) {
+      case 'SUCCESS':
+        renderView = this.renderCharts()
+        break
+      case 'FAILURE':
+        renderView = this.renderFailure()
+        break
+      default:
+        renderView = this.renderLoader()
+    }
     return (
       <div className="app-container">
         <div className="logo-name-container">
@@ -75,7 +107,7 @@ class CowinDashboard extends Component {
           </h1>
         </div>
         <h1 className="app-heading">CoWIN Vaccination in India</h1>
-        {isLoading ? this.renderLoader() : this.renderCharts()}
+        {renderView}
       </div>
     )
   }
